@@ -115,13 +115,23 @@ RCT_EXPORT_METHOD(login:(RCTPromiseResolveBlock)resolve
                 NSError *rejectError = [self buildCannotLoadAccountErrorWithUnderlyingError:error];
                 reject([self buildErrorCodeForError:rejectError], rejectError.localizedDescription, rejectError);
             } else {
-                NSDictionary *result = @{
-                                         TPSTwitterAuthTokenKey: session.authToken,
-                                         TPSTwitterAuthTokenSecretKey: session.authTokenSecret,
-                                         TPSTwitterUserIDKey: session.userID,
-                                         TPSTwitterUserNameKey: session.userName
-                                         };
-                resolve(result);
+                // from https://github.com/tipsi/tipsi-twitter/issues/15
+                TWTRAPIClient *client = [TWTRAPIClient clientWithCurrentUser];
+                NSURLRequest *request = [client URLRequestWithMethod:@"GET"
+                                                                 URL:@"https://api.twitter.com/1.1/account/verify_credentials.json"
+                                                          parameters:@{@"skip_status": @"true"}
+                                                               error:nil];
+                [client sendTwitterRequest:request completion:^(NSURLResponse *response, NSData *data, NSError *connectionError) {
+                    if (error) {
+                        NSError *rejectError = [self buildCannotLoadAccountErrorWithUnderlyingError:connectionError];
+                        reject([self buildErrorCodeForError:rejectError], rejectError.localizedDescription, rejectError);
+                    } else {
+                        NSError *jsonError;
+                        NSDictionary *json = [NSJSONSerialization JSONObjectWithData:data options:0 error:&jsonError];
+                        // TODO: how to handle json error
+                        resolve(json);
+                    }
+                }];
             }
         }];
     } else {
