@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.content.Intent;
 import android.util.Log;
 
+import retrofit2.Call;
+
 import com.facebook.react.bridge.ActivityEventListener;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.BaseActivityEventListener;
@@ -22,9 +24,12 @@ import com.twitter.sdk.android.core.Twitter;
 import com.twitter.sdk.android.core.TwitterAuthConfig;
 import com.twitter.sdk.android.core.TwitterAuthToken;
 import com.twitter.sdk.android.core.TwitterConfig;
+import com.twitter.sdk.android.core.TwitterCore;
 import com.twitter.sdk.android.core.TwitterException;
 import com.twitter.sdk.android.core.TwitterSession;
+import com.twitter.sdk.android.core.TwitterApiClient;
 import com.twitter.sdk.android.core.identity.TwitterAuthClient;
+import com.twitter.sdk.android.core.models.User;
 
 /**
  * This is a {@link NativeModule} that allows JS to use login feature of twitter-kit sdk.
@@ -78,10 +83,27 @@ public class TPSTwitterModule extends ReactContextBaseJavaModule implements Life
           final WritableMap result = Arguments.createMap();
           result.putString("authToken", authToken.token);
           result.putString("authTokenSecret", authToken.secret);
-          result.putString("userID", String.valueOf(session.getUserId()));
-          result.putString("userName", session.getUserName());
+          result.putString("id_str", String.valueOf(session.getUserId()));
+          result.putString("screen_name", session.getUserName());
 
-          promise.resolve(result);
+          TwitterApiClient twitterApiClient = TwitterCore.getInstance().getApiClient();
+          Call<User> user = twitterApiClient.getAccountService().verifyCredentials(Boolean.FALSE, Boolean.FALSE, Boolean.FALSE);
+          user.enqueue(new Callback<User>() {
+
+            @Override
+            public void success(Result<User> userResult) {
+              result.putString("name", userResult.data.name);
+              result.putString("profile_image_url", userResult.data.profileImageUrl);
+              promise.resolve(result);
+            }
+
+            @Override
+            public void failure(TwitterException exception) {
+              Log.d(TAG, "failure: ");
+              promise.reject(TAG, exception.getMessage());
+            }
+
+          });
         }
 
         @Override
