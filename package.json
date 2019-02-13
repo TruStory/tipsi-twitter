@@ -1,6 +1,6 @@
 {
   "name": "tipsi-twitter",
-  "version": "2.2.1-trustory",
+  "version": "2.3.1-trustory",
   "description": "Twitter sdk for react-native",
   "main": "src/index.js",
   "scripts": {
